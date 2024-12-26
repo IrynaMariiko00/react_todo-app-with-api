@@ -24,7 +24,6 @@ export const App: React.FC = () => {
   const [isInputDisabled, setIsInputDisabled] = useState(false);
   const [isToggleAllActive, setIsToggleAllActive] = useState(false);
   const [query, setQuery] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -187,17 +186,18 @@ export const App: React.FC = () => {
   };
 
   const handleRenamingTodo = (renamedTodo: Todo) => {
-    setIsLoading(true);
-    updateTodos(renamedTodo)
+    setCurrentTodoIds([...currentTodoIds, renamedTodo.id]);
+
+    return updateTodos(renamedTodo)
       .then(() => {
-        setTodos(currentTodos =>
-          currentTodos.map(todo =>
+        setTodos(prevTodos =>
+          prevTodos.map(todo =>
             todo.id === renamedTodo.id ? renamedTodo : todo,
           ),
         );
       })
       .catch(() => setError(ErrorMessage.UpdateTodo))
-      .finally(() => setIsLoading(false));
+      .finally(() => setCurrentTodoIds([]));
   };
 
   if (!USER_ID) {
@@ -228,7 +228,7 @@ export const App: React.FC = () => {
               todo={todo}
               onToggleStatus={toggleTodoStatus}
               handleDeleteTodo={handleDeleteTodo}
-              isLoading={currentTodoIds.includes(todo.id) || isLoading}
+              isLoading={currentTodoIds.includes(todo.id)}
               onRenamingTodo={handleRenamingTodo}
             />
           ))}

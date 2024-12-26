@@ -7,11 +7,11 @@ type Props = {
   onToggleStatus: (v: Todo) => void;
   handleDeleteTodo: (v: number) => void;
   isLoading: boolean;
-  onRenamingTodo: (v: Todo) => void;
+  onRenamingTodo: (v: Todo) => Promise<void>;
 };
 
 export const TodoItem: React.FC<Props> = ({
-  todo: todoItem, // змінив ім'я параметра
+  todo: todoItem,
   onToggleStatus,
   handleDeleteTodo,
   isLoading,
@@ -42,7 +42,7 @@ export const TodoItem: React.FC<Props> = ({
     const trimmedTitle = renamedTodo.trim();
 
     if (trimmedTitle === todoItem.title) {
-      setIsEditing(false); // Залишити закритим, якщо нічого не змінилося
+      setIsEditing(false);
 
       return;
     }
@@ -53,14 +53,10 @@ export const TodoItem: React.FC<Props> = ({
       return;
     }
 
-    // Викликаємо onRenamingTodo без .catch(), якщо це не асинхронна функція
     onRenamingTodo({
       ...todoItem,
       title: trimmedTitle,
-    });
-
-    // Якщо редагування успішне, закриваємо форму
-    setIsEditing(false);
+    }).finally(() => setIsEditing(false));
   };
 
   return (
