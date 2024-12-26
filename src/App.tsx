@@ -2,7 +2,13 @@ import React, { useEffect, useState, useMemo, useRef } from 'react';
 import { UserWarning } from './UserWarning';
 import { Header } from './components/Header';
 import { Todo } from './types/Todo';
-import { getTodos, addTodos, deleteTodos, USER_ID } from './api/todos';
+import {
+  getTodos,
+  addTodos,
+  deleteTodos,
+  USER_ID,
+  updateTodos,
+} from './api/todos';
 import { TodoItem } from './components/TodoItem';
 import { Errors } from './components/Errors';
 import { Footer } from './components/Footer';
@@ -16,7 +22,9 @@ export const App: React.FC = () => {
   const [currentFilter, setCurrentFilter] = useState<FilterBy>(FilterBy.All);
   const [currentTodoIds, setCurrentTodoIds] = useState<number[]>([]);
   const [isInputDisabled, setIsInputDisabled] = useState(false);
+  const [isToggleAllActive, setIsToggleAllActive] = useState(false);
   const [query, setQuery] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -109,19 +117,87 @@ export const App: React.FC = () => {
     });
   };
 
-  const toggleTodoStatus = (updatedTodo: Todo) => {
-    setTodos(prevTodos => {
-      const copyTodos = [...prevTodos];
+  useEffect(() => {
+    const allCompleted = todos.every(todo => todo.completed);
 
-      for (let i = 0; i < copyTodos.length; ++i) {
-        if (copyTodos[i].id === updatedTodo.id) {
-          copyTodos[i] = updatedTodo;
-          break;
+    setIsToggleAllActive(allCompleted);
+  }, [todos]);
+
+  const handleToggleAll = () => {
+    let updatedTodos: Todo[];
+    const allTodosCompleted = todos.every(todo => todo.completed);
+
+    if (allTodosCompleted) {
+      updatedTodos = todos.map(todo => ({
+        ...todo,
+        completed: false,
+      }));
+    } else {
+      updatedTodos = todos
+        .filter(todo => !todo.completed)
+        .map(todo => ({
+          ...todo,
+          completed: true,
+        }));
+    }
+
+    Promise.all(updatedTodos.map(todo => updateTodos(todo)))
+      .then(() => {
+        if (allTodosCompleted) {
+          setTodos(updatedTodos);
+        } else {
+          setTodos(prevTodos =>
+            prevTodos.map(todo => {
+              if (allTodosCompleted) {
+                return todo;
+              }
+
+              return { ...todo, completed: true };
+            }),
+          );
         }
-      }
+      })
+      .catch(() => {
+        setError(ErrorMessage.UpdateTodo);
+        setTodos(prevTodos => prevTodos);
+      });
+  };
 
-      return copyTodos;
-    });
+  const toggleTodoStatus = (updatedTodo: Todo) => {
+    const updatedTodoCopy = { ...updatedTodo };
+
+    setCurrentTodoIds([...currentTodoIds, updatedTodoCopy.id]);
+
+    updatedTodoCopy.completed = !updatedTodoCopy.completed;
+    updateTodos(updatedTodoCopy)
+      .then(() => {
+        setTodos(currentTodo =>
+          currentTodo.map(todo =>
+            todo.id === updatedTodoCopy.id
+              ? { ...todo, completed: updatedTodoCopy.completed }
+              : todo,
+          ),
+        );
+      })
+      .catch(() => {
+        setError(ErrorMessage.UpdateTodo);
+        setTodos(prevTodos => prevTodos);
+      })
+      .finally(() => setCurrentTodoIds([]));
+  };
+
+  const handleRenamingTodo = (renamedTodo: Todo) => {
+    setIsLoading(true);
+    updateTodos(renamedTodo)
+      .then(() => {
+        setTodos(currentTodos =>
+          currentTodos.map(todo =>
+            todo.id === renamedTodo.id ? renamedTodo : todo,
+          ),
+        );
+      })
+      .catch(() => setError(ErrorMessage.UpdateTodo))
+      .finally(() => setIsLoading(false));
   };
 
   if (!USER_ID) {
@@ -140,6 +216,9 @@ export const App: React.FC = () => {
           query={query}
           setQuery={setQuery}
           inputRef={inputRef}
+          handleToggleAll={handleToggleAll}
+          isToggleAllActive={isToggleAllActive}
+          todos={todos}
         />
 
         <section className="todoapp__main" data-cy="TodoList">
@@ -149,7 +228,8 @@ export const App: React.FC = () => {
               todo={todo}
               onToggleStatus={toggleTodoStatus}
               handleDeleteTodo={handleDeleteTodo}
-              isLoading={currentTodoIds.includes(todo.id)}
+              isLoading={currentTodoIds.includes(todo.id) || isLoading}
+              onRenamingTodo={handleRenamingTodo}
             />
           ))}
         </section>

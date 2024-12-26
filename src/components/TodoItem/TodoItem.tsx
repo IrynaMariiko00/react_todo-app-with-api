@@ -1,3 +1,4 @@
+import React, { useState } from 'react';
 import { Todo } from '../../types/Todo';
 import classNames from 'classnames';
 
@@ -6,53 +7,113 @@ type Props = {
   onToggleStatus: (v: Todo) => void;
   handleDeleteTodo: (v: number) => void;
   isLoading: boolean;
+  onRenamingTodo: (v: Todo) => void;
 };
 
 export const TodoItem: React.FC<Props> = ({
-  todo,
+  todo: todoItem, // змінив ім'я параметра
   onToggleStatus,
   handleDeleteTodo,
   isLoading,
+  onRenamingTodo,
 }) => {
-  const handleChangeStatus = () => {
-    const updatedTodo = { ...todo, completed: !todo.completed };
+  const [isEditing, setIsEditing] = useState(false);
+  const [renamedTodo, setRenamedTodo] = useState(todoItem.title);
 
-    onToggleStatus(updatedTodo);
+  const handleDoubleClick = () => {
+    setIsEditing(true);
+  };
+
+  const handleRenamingTodo = (
+    event: // eslint-disable-next-line
+    React.KeyboardEvent<HTMLInputElement> | React.FocusEvent<HTMLInputElement>,
+  ) => {
+    if ('key' in event && event.key === 'Escape') {
+      setIsEditing(false);
+      setRenamedTodo(todoItem.title);
+
+      return;
+    }
+
+    if ('key' in event && event.key !== 'Enter') {
+      return;
+    }
+
+    const trimmedTitle = renamedTodo.trim();
+
+    if (trimmedTitle === todoItem.title) {
+      setIsEditing(false); // Залишити закритим, якщо нічого не змінилося
+
+      return;
+    }
+
+    if (!trimmedTitle) {
+      handleDeleteTodo(todoItem.id);
+
+      return;
+    }
+
+    // Викликаємо onRenamingTodo без .catch(), якщо це не асинхронна функція
+    onRenamingTodo({
+      ...todoItem,
+      title: trimmedTitle,
+    });
+
+    // Якщо редагування успішне, закриваємо форму
+    setIsEditing(false);
   };
 
   return (
     <div
       data-cy="Todo"
       className={classNames('todo', {
-        completed: todo.completed,
+        completed: todoItem.completed && !isEditing,
       })}
-      key={todo.id}
+      key={todoItem.id}
     >
       <label className="todo__status-label">
         <input
           data-cy="TodoStatus"
           type="checkbox"
           className="todo__status"
-          checked={todo.completed}
+          checked={todoItem.completed}
           aria-label="Mark as completed"
-          onChange={handleChangeStatus}
+          onChange={() => onToggleStatus(todoItem)}
         />
       </label>
 
-      <span data-cy="TodoTitle" className="todo__title">
-        {todo.title}
-      </span>
+      {isEditing ? (
+        <input
+          type="text"
+          value={renamedTodo}
+          onChange={e => setRenamedTodo(e.target.value)}
+          onBlur={handleRenamingTodo}
+          onKeyUp={handleRenamingTodo}
+          autoFocus
+          data-cy="TodoTitleField"
+          className="todo__title todo__title--editing"
+        />
+      ) : (
+        <>
+          <span
+            data-cy="TodoTitle"
+            className="todo__title"
+            onDoubleClick={handleDoubleClick}
+          >
+            {todoItem.title}
+          </span>
 
-      {/* Remove button appears only on hover */}
-      <button
-        type="button"
-        className="todo__remove"
-        data-cy="TodoDelete"
-        onClick={() => handleDeleteTodo(todo.id)}
-        disabled={isLoading}
-      >
-        ×
-      </button>
+          <button
+            type="button"
+            className="todo__remove"
+            data-cy="TodoDelete"
+            onClick={() => handleDeleteTodo(todoItem.id)}
+            disabled={isLoading}
+          >
+            ×
+          </button>
+        </>
+      )}
 
       {/* Overlay for loader during status change */}
       <div
