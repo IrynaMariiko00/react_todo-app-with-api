@@ -22,7 +22,6 @@ export const App: React.FC = () => {
   const [currentFilter, setCurrentFilter] = useState<FilterBy>(FilterBy.All);
   const [currentTodoIds, setCurrentTodoIds] = useState<number[]>([]);
   const [isInputDisabled, setIsInputDisabled] = useState(false);
-  const [isToggleAllActive, setIsToggleAllActive] = useState(false);
   const [query, setQuery] = useState('');
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -116,17 +115,14 @@ export const App: React.FC = () => {
     });
   };
 
-  useEffect(() => {
-    const allCompleted = todos.every(todo => todo.completed);
-
-    setIsToggleAllActive(allCompleted);
-  }, [todos]);
+  const isToggleAllActive = todos.every(todo => todo.completed);
 
   const handleToggleAll = () => {
     let updatedTodos: Todo[];
-    const allTodosCompleted = todos.every(todo => todo.completed);
 
-    if (allTodosCompleted) {
+    setCurrentTodoIds(todos.map(todo => todo.id));
+
+    if (isToggleAllActive) {
       updatedTodos = todos.map(todo => ({
         ...todo,
         completed: false,
@@ -142,12 +138,12 @@ export const App: React.FC = () => {
 
     Promise.all(updatedTodos.map(todo => updateTodos(todo)))
       .then(() => {
-        if (allTodosCompleted) {
+        if (isToggleAllActive) {
           setTodos(updatedTodos);
         } else {
           setTodos(prevTodos =>
             prevTodos.map(todo => {
-              if (allTodosCompleted) {
+              if (isToggleAllActive) {
                 return todo;
               }
 
@@ -159,7 +155,8 @@ export const App: React.FC = () => {
       .catch(() => {
         setError(ErrorMessage.UpdateTodo);
         setTodos(prevTodos => prevTodos);
-      });
+      })
+      .finally(() => setCurrentTodoIds([]));
   };
 
   const toggleTodoStatus = (updatedTodo: Todo) => {
