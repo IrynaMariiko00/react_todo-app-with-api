@@ -153,7 +153,7 @@ export const App: React.FC = () => {
         }
       })
       .catch(() => {
-        setError(ErrorMessage.UpdateTodo);
+        setError(ErrorMessage.UpdateTodo); //
         setTodos(prevTodos => prevTodos);
       })
       .finally(() => setCurrentTodoIds([]));
