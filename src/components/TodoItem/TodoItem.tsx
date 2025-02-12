@@ -64,6 +64,7 @@ export const TodoItem: React.FC<Props> = ({
       data-cy="Todo"
       className={classNames('todo', {
         completed: todoItem.completed && !isEditing,
+        checked: isEditing && todoItem.completed,
       })}
       key={todoItem.id}
     >
@@ -74,7 +75,7 @@ export const TodoItem: React.FC<Props> = ({
           className="todo__status"
           checked={todoItem.completed}
           aria-label="Mark as completed"
-          onChange={() => onToggleStatus(todoItem)}
+          onChange={() => !isEditing && onToggleStatus(todoItem)}
         />
       </label>
 
